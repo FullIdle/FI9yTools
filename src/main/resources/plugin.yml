@@ -1,0 +1,9 @@
+name: FI9yTools
+main: ${group}
+version: ${version}
+depend:
+  - PlugManX
+commands:
+  fi9ytools:
+    description: Main command for FI9yTools
+    aliases: [fi9y]

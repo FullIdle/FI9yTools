@@ -1,0 +1,5 @@
+#请自行配置
+account:
+password:
+#默认下载目录,如果非Bukkit可用插件则会下载到这个目录下(付费插件可不会进行下载(请自己去))
+defaultDownloadDirectory: '{user}/Downloads'
