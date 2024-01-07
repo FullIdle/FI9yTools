@@ -4,9 +4,6 @@ import com.google.gson.Gson;
 import me.fullidle.fi9ytools.fi9ytools.Main;
 import lombok.SneakyThrows;
 import me.fullidle.fi9ytools.fi9ytools.mc9y.Mc9yApi;
-import me.fullidle.fi9ytools.fi9ytools.mc9y.post.Post;
-import me.fullidle.fi9ytools.fi9ytools.mc9y.post.ResourcePost;
-import me.fullidle.fi9ytools.fi9ytools.util.SomeMethod;
 import okhttp3.Cookie;
 import okhttp3.OkHttpClient;
 
@@ -20,7 +17,6 @@ public class FI9yData {
             .followRedirects(false)
             .build();
     public static final Map<String, Cookie> loginCookie = new HashMap<>();
-    public static Map<Integer, Post> searchCache = new HashMap<>();
 
     @SneakyThrows
     public static void init(Main plugin){
@@ -28,9 +24,6 @@ public class FI9yData {
         {
             client.dispatcher().cancelAll();
             client.dispatcher().executorService().shutdown();
-            if (client.cache() != null) {
-                client.cache().close();
-            }
             loginCookie.clear();
         }
 
@@ -43,7 +36,6 @@ public class FI9yData {
                 .name("xf_notice_dismiss")
                 .build();
         loginCookie.put(xf_notice_dismiss.name(),xf_notice_dismiss);
-
         {
             String account = plugin.getConfig().getString("account");
             String password = plugin.getConfig().getString("password");

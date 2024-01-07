@@ -1,10 +1,7 @@
 package me.fullidle.fi9ytools.fi9ytools.util;
 
 import lombok.SneakyThrows;
-import me.fullidle.fi9ytools.fi9ytools.data.FI9yData;
-import me.fullidle.fi9ytools.fi9ytools.mc9y.post.Post;
 import okhttp3.*;
-import org.bukkit.command.CommandSender;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -12,14 +9,14 @@ import org.jsoup.parser.Parser;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.net.URLEncoder;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.StringJoiner;
 
-import static me.fullidle.fi9ytools.fi9ytools.data.FI9yData.*;
+import static me.fullidle.fi9ytools.fi9ytools.data.FI9yData.client;
+import static me.fullidle.fi9ytools.fi9ytools.data.FI9yData.loginCookie;
+
 public class SomeMethod {
     /**
      * 默认请求头
@@ -119,6 +116,10 @@ public class SomeMethod {
         return file;
     }
 
+
+    /**
+     * 获取一个合适的文件出来用来下载
+     */
     private static int copyNumber = 0;
     @SneakyThrows
     private static File getSuitableFile(File file){
@@ -138,18 +139,5 @@ public class SomeMethod {
             }
         }
         return file;
-    }
-
-    /**
-     * @return 返回默认下载地址
-     */
-    public static String getDownloadPath(){
-        return plugin.getConfig().getString("defaultDownloadDirectory").replace("{user}", System.getProperty("user.home"));
-    }
-    /*显示缓存*/
-    public static void showCache(CommandSender sender){
-        for (Map.Entry<Integer, Post> entry : FI9yData.searchCache.entrySet()) {
-            sender.sendMessage("§a"+ entry.getKey() +"."+entry.getValue().getTitle());
-        }
     }
 }

@@ -1,6 +1,6 @@
 package me.fullidle.fi9ytools.fi9ytools.mc9y;
 
-import me.fullidle.fi9ytools.fi9ytools.mc9y.post.ResourcePost;
+import me.fullidle.fi9ytools.fi9ytools.mc9y.post.resource.ResourcePost;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import me.fullidle.fi9ytools.fi9ytools.data.FI9yData;

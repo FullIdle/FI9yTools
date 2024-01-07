@@ -2,21 +2,31 @@ package me.fullidle.fi9ytools.fi9ytools.mc9y;
 
 import com.rylinaux.plugman.PlugMan;
 import lombok.SneakyThrows;
+import me.fullidle.fi9ytools.fi9ytools.data.SearchCache;
 import me.fullidle.fi9ytools.fi9ytools.mc9y.post.ForumPost;
 import me.fullidle.fi9ytools.fi9ytools.mc9y.post.Post;
-import me.fullidle.fi9ytools.fi9ytools.mc9y.post.ResourcePost;
+import me.fullidle.fi9ytools.fi9ytools.mc9y.post.resource.ResourcePost;
 import me.fullidle.fi9ytools.fi9ytools.util.SomeMethod;
 import okhttp3.*;
+import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.plugin.Plugin;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 import static me.fullidle.fi9ytools.fi9ytools.data.FI9yData.*;
+import static me.fullidle.fi9ytools.fi9ytools.data.SearchCache.cacheSearchData;
+import static me.fullidle.fi9ytools.fi9ytools.data.SearchCache.searchNextPageUrl;
 
 public class Mc9yApi {
     /**
@@ -28,6 +38,7 @@ public class Mc9yApi {
      */
     @SneakyThrows
     public static Post[] search(String keywords, String users, boolean searchTitlesOnly){
+        SearchCache.clear();
         String xfToken = SomeMethod.getSearchXfToken();
         MediaType mediaType = MediaType.parse("application/x-www-form-urlencoded");
         RequestBody body = RequestBody.create(mediaType, "keywords="+
@@ -37,36 +48,67 @@ public class Mc9yApi {
         Request request = SomeMethod.getDefaultPostMethodBuilder(new Request.Builder()
                 .url("https://bbs.mc9y.net/search/search"), body).build();
         Response response = client.newCall(request).execute();
-        ArrayList<Post> posts = new ArrayList<>();
+        ArrayList<Post> posts = null;
         if (response.code() == 303) {
             String targetUrl = response.headers().get("Location");
-            Request targetRequest = SomeMethod.getDefaultGETMethodBuilder(targetUrl).build();
-            Response targetResponse = client.newCall(targetRequest).execute();
-            Document parse = Jsoup.parse(targetResponse.body().string());
-            Elements list = parse.select(".contentRow-title a");
-            for (Element el : list) {
-                String href = el.attr("href");
-                String postUrl = targetRequest.url().resolve(href).toString();
-                if (href.startsWith("/resources")){
-                    posts.add(ResourcePost.getInstance(postUrl));
-                }else{
-                    posts.add(ForumPost.getInstance(postUrl));
-                }
-                /*待完善其他Post*/
-            }
+            posts = getSearchPagePost(targetUrl);
         }
         response.close();
-        return posts.toArray(new Post[0]);
+        return posts==null?new Post[0]:posts.toArray(new Post[0]);
+    }
+
+    @SneakyThrows
+    public static ArrayList<Post> getSearchPagePost(String targetUrl){
+        ArrayList<Post> posts = new ArrayList<>();
+        Request request = SomeMethod.getDefaultGETMethodBuilder(targetUrl).build();
+        Response response = client.newCall(request).execute();
+        Document parse = Jsoup.parse(response.body().string());
+        Elements list = parse.select(".contentRow-title a");
+        {
+            /*缓存下一页地址*/
+            String href = parse.select("a.pageNav-jump--next").first().attr("href");
+            searchNextPageUrl = request.url().resolve(href).toString();
+        }
+
+        for (Element el : list) {
+            String href = el.attr("href");
+            String postUrl = request.url().resolve(href).toString();
+            if (href.startsWith("/resources")){
+                if (href.contains("update")){
+                    continue;
+                }
+                posts.add(ResourcePost.getInstance(postUrl));
+            }else{
+                posts.add(ForumPost.getInstance(postUrl));
+            }
+            /*待完善其他Post*/
+        }
+        cacheSearchData(posts);
+        return posts;
     }
 
     /**
-     * 安装远程云端插件,非插件不会下载在服务端/plugins文件夹内,且不会进行安装
+     * 安装远程云端插件,只用于下载Jar文件,请不要用在下载其他的类型的文件！
      */
-    public static File installCloudPlugin(String downloadUrl) throws Exception {
+    public static File installCloudPlugin(String downloadUrl, boolean canUpdate) throws Exception {
         File pluginsFolder = plugin.getDataFolder().
                 getParentFile();
         File file = SomeMethod.downloadPlugInToFolder(downloadUrl,
                 pluginsFolder.toPath());
+
+        JarFile jarFile = new JarFile(file);
+        JarEntry jarEntry = jarFile.getJarEntry("plugin.yml");
+        BufferedReader reader = new BufferedReader(new InputStreamReader(jarFile.getInputStream(jarEntry)));
+        YamlConfiguration pluginYaml = YamlConfiguration.loadConfiguration(reader);
+        String pluginName = pluginYaml.getString("name");
+        Plugin targetPlugin = Bukkit.getPluginManager().getPlugin(pluginName);
+        reader.close();
+        if (targetPlugin != null) {
+            if (canUpdate){
+                PlugMan.getInstance().getPluginUtil().unload(targetPlugin);
+            }
+            return file;
+        }
         PlugMan.getInstance().getPluginUtil().load(file.getName().replace(".jar",""));
         return file;
     }
@@ -82,10 +124,10 @@ public class Mc9yApi {
         request = SomeMethod.getDefaultGETMethodBuilder(url).build();
         response = client.newCall(request).execute();
         Document parse = Jsoup.parse(response.body().string());
-        HttpUrl urled = request.url();
+        HttpUrl curled = request.url();
         return parse.select(".structItem-title a[data-tp-primary]")
                 .stream()
-                .map(el -> ResourcePost.getInstance(urled.resolve(el.attr("href")).toString()))
+                .map(el -> ResourcePost.getInstance(curled.resolve(el.attr("href")).toString()))
                 .toArray(ResourcePost[]::new);
     }
 

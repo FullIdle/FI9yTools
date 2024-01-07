@@ -1,16 +1,12 @@
 package me.fullidle.fi9ytools.fi9ytools;
 
-import me.fullidle.fi9ytools.fi9ytools.data.FI9yData;
 import me.fullidle.fi9ytools.fi9ytools.mc9y.Mc9yApi;
 import me.fullidle.fi9ytools.fi9ytools.mc9y.post.Post;
-import me.fullidle.fi9ytools.fi9ytools.mc9y.post.ResourcePost;
-import me.fullidle.fi9ytools.fi9ytools.util.SomeMethod;
+import me.fullidle.fi9ytools.fi9ytools.mc9y.post.resource.ResourcePost;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
-import org.bukkit.plugin.InvalidDescriptionException;
-import org.bukkit.plugin.InvalidPluginException;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
@@ -19,9 +15,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static me.fullidle.fi9ytools.fi9ytools.data.FI9yData.plugin;
+import static me.fullidle.fi9ytools.fi9ytools.data.SearchCache.*;
+
 public class CMD implements CommandExecutor, TabCompleter {
     public static ArrayList<String> CMD_LIST = new ArrayList<>(Arrays.asList(
             "search",
+            "nextpage",
             "install",
             "latestresources",
             "reload",
@@ -40,7 +40,6 @@ public class CMD implements CommandExecutor, TabCompleter {
                     break;
                 }
                 case "search":{
-                    FI9yData.searchCache.clear();
                     if (args.length < 2){
                         return false;
                     }
@@ -54,14 +53,14 @@ public class CMD implements CommandExecutor, TabCompleter {
                                 Post[] search = Mc9yApi.search(key, "", false);
                                 cacheSearchData(search);
                                 /*-->提示<--*/
-                                SomeMethod.showCache(sender);
+                                showCache(sender);
                                 if (search.length > 1){
                                     sender.sendMessage("§a搜索完成");
                                 }else{
                                     sender.sendMessage("§c搜索内容是空的(这或许就是没有内容/搜索失败)");
                                 }
                             }
-                        }.runTaskAsynchronously(FI9yData.plugin);
+                        }.runTaskAsynchronously(plugin);
                     }
                     return false;
                 }
@@ -70,7 +69,7 @@ public class CMD implements CommandExecutor, TabCompleter {
                         return false;
                     }
                     int number = Integer.parseInt(args[1]);
-                    Post post = FI9yData.searchCache.get(number);
+                    Post post = searchCache.get(number);
                     if (!(post instanceof ResourcePost)){
                         sender.sendMessage("§cBukkit标签的资源文件不能下载!");
                         return false;
@@ -87,17 +86,17 @@ public class CMD implements CommandExecutor, TabCompleter {
                     new BukkitRunnable() {
                         @Override
                         public void run() {
-                            sender.sendMessage("§a开始下载ing...");
+                            sender.sendMessage("§a开始下载安装ing...");
                             try {
-                                File file = Mc9yApi.installCloudPlugin(downloadLink);
+                                File file = Mc9yApi.installCloudPlugin(downloadLink,false);
                                 sender.sendMessage("§a插件:"+file.getName()+"安装完成!");
                             } catch (Exception e) {
-                                sender.sendMessage("§c插件安装失败!(可能没下载成功[自己去下]或者需要重启)");
+                                sender.sendMessage("§c插件安装失败!(可能没下载成功[自己去下/多半没有买把你]或者需要重启)");
                                 sender.sendMessage("§c帖子地址:§3"+downloadLink);
                                 e.printStackTrace();
                             }
                         }
-                    }.runTaskAsynchronously(FI9yData.plugin);
+                    }.runTaskAsynchronously(plugin);
                     return false;
                 }
                 case "latestresources":{
@@ -105,34 +104,42 @@ public class CMD implements CommandExecutor, TabCompleter {
                         @Override
                         public void run() {
                             cacheSearchData(Mc9yApi.getLatestResources());
-                            SomeMethod.showCache(sender);
+                            showCache(sender);
                             sender.sendMessage("§a搜索完成");
                         }
-                    }.runTaskAsynchronously(FI9yData.plugin);
+                    }.runTaskAsynchronously(plugin);
                     return false;
                 }
                 case "reload":{
                     sender.sendMessage("§a重载中ing...");
-                    FI9yData.plugin.reloadConfig();
+                    plugin.reloadConfig();
                     sender.sendMessage("§a重载完成");
                     return false;
                 }
                 case "showcache":{
-                    SomeMethod.showCache(sender);
+                    showCache(sender);
+                    return false;
+                }
+                case "nextpage":{
+                    if (searchNextPageUrl == null) {
+                        sender.sendMessage("§c上次的搜索没有下一页了!");
+                    }else{
+                        new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                sender.sendMessage("§a获取下一页数据中ing...");
+                                Mc9yApi.getSearchPagePost(searchNextPageUrl);
+                                sender.sendMessage("§a获取完成!开始显示已经缓存数据");
+                                showCache(sender);
+                            }
+                        }.runTaskAsynchronously(plugin);
+                    }
                     return false;
                 }
             }
         }
         sender.sendMessage("help待写");
         return false;
-    }
-
-    private static void cacheSearchData(Post[] search) {
-        int i = 0;
-        for (Post post : search) {
-            FI9yData.searchCache.put(i,post);
-            i++;
-        }
     }
 
     @Override

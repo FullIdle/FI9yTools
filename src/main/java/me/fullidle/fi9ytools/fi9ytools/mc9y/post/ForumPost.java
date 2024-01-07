@@ -18,33 +18,40 @@ import static me.fullidle.fi9ytools.fi9ytools.data.FI9yData.client;
 @Getter
 public class ForumPost implements Post{
     private final MessageBlock[] messageBlock;
-    private ForumPost(MessageBlock[] messageBlock){
+    private final String title;
+    private final String postUrl;
+    private final String publisher;
+
+    private ForumPost(String title,String postUrl,String publisher,MessageBlock[] messageBlock){
+        this.title = title;
+        this.postUrl = postUrl;
+        this.publisher = publisher;
         this.messageBlock = messageBlock;
     }
 
     @Override
     public String getTitle() {
-        return null;
+        return title;
     }
 
     @Override
     public String getPublisher() {
-        return null;
+        return publisher;
     }
 
     @Override
     public PostType getPostType() {
-        return null;
+        return PostType.DEFAULT;
     }
 
     @Override
     public String getPostURL() {
-        return null;
+        return postUrl;
     }
 
     @SneakyThrows
-    public static ForumPost getInstance(String pluginURL){
-        Request request = SomeMethod.getDefaultGETMethodBuilder(pluginURL).build();
+    public static ForumPost getInstance(String postUrl){
+        Request request = SomeMethod.getDefaultGETMethodBuilder(postUrl).build();
         Response response = client.newCall(request).execute();
         Document parse = Jsoup.parse(response.body().string(), Parser.htmlParser());
         Elements block = parse.select(".message--post div.message-inner");
@@ -55,7 +62,10 @@ public class ForumPost implements Post{
                     el.select("a[itemprop='name']").text()
             ));
         }
-        return new ForumPost(list.toArray(new MessageBlock[0]));
+        return new ForumPost(parse.select("h1").first().text()
+                ,postUrl
+                ,parse.select("a.username.u-concealed").first().text()
+                ,list.toArray(new MessageBlock[0]));
     }
 
     @Getter
